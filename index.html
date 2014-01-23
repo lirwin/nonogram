@@ -1,0 +1,283 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Nonogram</title>
+    <link rel="stylesheet" href="./css/style.css">
+  </head>
+  <body>
+    <h1>Nonograms is a logic puzzle</h1>
+    <div id="canvasWrapper">
+        <canvas id="canvas" width="430" height="430"></canvas>
+    </div>
+    <p>
+    The rules are simple.
+    You have a grid of squares, which must be either filled in purple or marked with X.
+    Beside each row of the grid are listed the lengths of the runs of purple squares on that row. 
+    Above each column are listed the lengths of the runs of purple squares in that column.</p> 
+    <p>Your aim is to find all purple squares.</p>
+    <p>Left click on a square to make it purple. Right click to mark with X.</p>   
+    
+
+    <script src="./js/utils.js"></script>
+    <script>
+    // Future fixes of game:  
+    // 1)  do not allow all 0s, or all 1s in a row or col for solution grid
+    // 2)  pause solution so user can see it before alert box saying puzzle is solved
+    // 3)  solutions should be unique
+    //
+  
+    window.onload = function () {
+      var canvas = document.getElementById('canvas'),
+          ctx = canvas.getContext('2d'),
+          mouse = utils.captureMouse(canvas),
+          gutterSize = 5,
+          tileSize = 60,
+          gridStart = 100,
+          rows = 5,
+          cols = 5,
+          solGrid = [],
+          currGrid = [],
+          rowStrings = [],
+          colStrings = [];
+        
+        function getSolGrid() {
+            //randomly generate 0s and 1s to fill solution grid
+            for (var i = 0; i < rows * cols; i++) {
+                solGrid[i] = Math.round(Math.random());
+            }
+        }       
+
+        function clearGrid() {
+            for (var i = 0; i < rows * cols; i++) {
+                currGrid[i] = 0;
+            }
+        }
+        function parseSolGrid() {
+            var cnt, indexLoc;
+            var indexLoc, rowString, colString;
+            
+            rowStrings = []; //initialize row clue strings
+            colStrings = []; //initialize col clue strings
+            
+            for (var i = 0; i < rows; i++){
+                indexLoc = i * cols;
+                rowString = '';
+                for (var j = 1; j < 4; j++){
+                    cnt = 0;
+                    
+                    while (solGrid[indexLoc] === 0 && indexLoc < (cols + i * rows)){
+                        indexLoc++;
+                    }
+                    while (solGrid[indexLoc] === 1 && indexLoc < (cols + i * rows)){
+                        cnt += 1;
+                        indexLoc++;
+                    } 
+                    if (cnt) {
+                       rowString += cnt + '  ';  
+                    }
+                    if (indexLoc >= (cols + i * rows)){
+                        break;
+                    }
+                }
+                if (rowString === '') {
+                    rowString = '0';
+                }
+                rowStrings.push(rowString);               
+            }
+            
+            for (var i = 0; i < cols; i++){
+                    indexLoc = i;
+                    colString = '';
+                for (var j = 1; j < 4; j++){
+                    cnt = 0;
+                    
+                    while (solGrid[indexLoc] === 0 && indexLoc < (i + rows * cols)){
+                        indexLoc += cols;
+                    }
+                    while (solGrid[indexLoc] === 1 && indexLoc < (i + rows * cols)){
+                        cnt += 1;
+                        indexLoc += cols;
+                    } 
+                    if (cnt) {
+                       colString += cnt + '  ';  
+                    }
+                    if (indexLoc >= (i + rows * cols)){
+                        break;
+                    }
+                }
+                if (colString === '') {
+                    colString = '0';
+                }
+                colStrings.push(colString);               
+            }
+        } 
+                       
+        function onMouseDown(event) {
+            //check mouse position
+            loop:
+            for (var i = 0; i < rows; i++) {
+                for (var j = 0; j < cols; j++) {
+                    var indexLoc = j + i * cols;
+                    if (mouse.x >= (gridStart + (j * (tileSize + gutterSize)))
+                    && mouse.x <= (gridStart + tileSize + (j * (tileSize + gutterSize)))
+                    && mouse.y >= (gridStart + (i * (tileSize + gutterSize)))
+                    && mouse.y <= (gridStart + tileSize + (i * (tileSize + gutterSize)))) {
+                        switch (event.which) {
+                            case 1:
+                                if (currGrid[indexLoc] == 1) {
+                                    currGrid[indexLoc] = 0;    
+                                } else {
+                                    currGrid[indexLoc] = 1;
+                                }
+                                break loop;
+                            case 3:
+                                if (currGrid[indexLoc] == 2) {
+                                    currGrid[indexLoc] = 0;    
+                                } else {
+                                    currGrid[indexLoc] = 2;
+                                }
+                                break loop;                            
+                            default:    
+                                break loop;
+                        }
+                    }
+                }
+            }
+        }
+        
+        window.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;            
+        }, false);        
+        canvas.addEventListener('mousedown', onMouseDown, false);
+
+                
+        function isSolved () {
+            for (var i = 0; i < solGrid.length; i++) {
+                if (solGrid[i] === 0) {
+                    if (currGrid[i] === 1) {
+                        return false;
+                    }               
+                } else if (solGrid[i] === 1){
+                    if (currGrid[i] !== 1) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }  
+               
+        function drawTile (x, y, color) {
+            ctx.save();
+            ctx.translate(gridStart, gridStart);
+            ctx.fillStyle = color;//rgb(200,200,200);
+            if (color === "red"){
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, y, tileSize, tileSize);
+                ctx.fillStyle = color;
+                ctx.translate(Math.round(tileSize/2), tileSize);
+                ctx.textAlign = "center";
+                ctx.font = "83px Arial";
+                ctx.fillText('X', x, y);
+            } else {
+                ctx.fillRect(x, y, tileSize, tileSize);    
+            }
+            ctx.restore();
+        }
+        
+        function writeHorizClues() {
+            var x = 30;
+            var y = gridStart + Math.round(tileSize/2);
+                        
+            ctx.save();
+            ctx.font = "bold 18px Arial";
+            ctx.fillStyle = "white";
+            
+            for (var i = 0; i < rowStrings.length; i++){
+                ctx.fillText(rowStrings[i], x, y); 
+                y += tileSize + gutterSize;
+            }
+            ctx.restore();
+        }
+        
+        function writeVertClues() {
+            var y;
+            var x = gridStart + Math.round(tileSize/4);
+                        
+            ctx.save();
+            ctx.font = "bold 18px Arial";
+            ctx.fillStyle = "white";
+            
+            for (var i = 0; i < colStrings.length; i++){
+                var str = colStrings[i];
+                
+                y = 32;
+                for (var j = 0; j < str.length; ) {
+                    ctx.fillText(str.charAt(j), x, y); 
+                    j++;
+                    if (str.charAt(j) === ' '){
+                        y += 28;
+                        while (str.charAt(j) === ' '){
+                            j++;
+                        }
+                    }
+                }
+                
+                x += tileSize + gutterSize;
+            }
+            ctx.restore();
+        }        
+        function render() {
+            ctx.fillStyle = "gray";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "black";
+            ctx.fillRect(gridStart - gutterSize, gridStart - gutterSize, (tileSize * cols + gutterSize * (cols + 1)), (tileSize * rows + gutterSize * (rows + 1)));
+            writeHorizClues();
+            writeVertClues();
+            
+            for (var i = 0; i < rows; i++){
+                for (var j = 0; j < cols; j++) {
+                    var indexLoc = j + i * cols;
+                    
+                    if (currGrid[indexLoc] === 0){
+                        drawTile((tileSize + gutterSize) * j, (tileSize + gutterSize) * i ,"white");
+                    }else if (currGrid[indexLoc] === 1){
+                        drawTile((tileSize + gutterSize) * j, (tileSize + gutterSize) * i,"purple");
+                    }else {
+                        drawTile((tileSize + gutterSize) * j, (tileSize + gutterSize) * i ,"red");
+                    }
+                }
+            }
+        }
+        
+        function update() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            render();
+            if (isSolved()) {
+                setTimeout (function () {
+                    alert ("Hey, you're awesome.  You solved the puzzle!\n\nHere's another one to solve!");
+                }, 500);
+                clearGrid();
+                getSolGrid();
+                parseSolGrid();
+            }  
+        }
+        
+        getSolGrid();
+        parseSolGrid();
+        clearGrid();         
+        (function drawFrame () {
+            window.requestAnimationFrame(drawFrame, canvas);
+            update();
+        })();
+    }
+    </script>
+  </body>
+</html>
+
+
+
+
+
+
